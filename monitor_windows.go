@@ -1,14 +1,19 @@
 package tun
 
 import (
+	"net/netip"
 	"sync"
 
-	"github.com/sagernet/sing-tun/internal/winipcfg"
+	"github.com/metacubex/sing-tun/internal/winipcfg"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/x/list"
 
 	"golang.org/x/sys/windows"
 )
+
+// zeroTierFakeGatewayIp from
+// https://github.com/zerotier/ZeroTierOne/blob/1.8.6/osdep/WindowsEthernetTap.cpp#L994
+var zeroTierFakeGatewayIp = netip.MustParseAddr("25.255.255.254")
 
 type networkUpdateMonitor struct {
 	routeListener     *winipcfg.RouteChangeCallback
@@ -67,6 +72,10 @@ func (m *defaultInterfaceMonitor) checkUpdate() error {
 	var index int
 
 	for _, row := range rows {
+		if row.NextHop.Addr() == zeroTierFakeGatewayIp {
+			continue
+		}
+
 		ifrow, err := row.InterfaceLUID.Interface()
 		if err != nil || ifrow.OperStatus != winipcfg.IfOperStatusUp {
 			continue
