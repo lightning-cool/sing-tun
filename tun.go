@@ -46,6 +46,7 @@ type Options struct {
 	ExcludePackage     []string
 	InterfaceMonitor   DefaultInterfaceMonitor
 	TableIndex         int
+	UnixSockFd         int
 }
 
 func CalculateInterfaceName(name string) (tunName string) {

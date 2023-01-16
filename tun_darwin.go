@@ -35,9 +35,14 @@ func Open(options Options) (Tun, error) {
 		return nil, E.New("bad tun name: ", options.Name)
 	}
 
-	tunFd, err := unix.Socket(unix.AF_SYSTEM, unix.SOCK_DGRAM, 2)
-	if err != nil {
-		return nil, err
+	var tunFd int
+	if options.UnixSockFd > 0 {
+		tunFd = options.UnixSockFd
+	} else {
+		tunFd, err = unix.Socket(unix.AF_SYSTEM, unix.SOCK_DGRAM, 2)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = configure(tunFd, ifIndex, options.Name, options)
