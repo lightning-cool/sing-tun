@@ -1,7 +1,6 @@
 package tun
 
 import (
-	"fmt"
 	"net"
 	"net/netip"
 	"os"
@@ -29,29 +28,29 @@ type NativeTun struct {
 }
 
 func Open(options Options) (Tun, error) {
-	ifIndex := -1
-	_, err := fmt.Sscanf(options.Name, "utun%d", &ifIndex)
-	if err != nil {
-		return nil, E.New("bad tun name: ", options.Name)
-	}
+	//ifIndex := -1
+	//_, err := fmt.Sscanf(options.Name, "utun%d", &ifIndex)
+	//if err != nil {
+	//    return nil, E.New("bad tun name: ", options.Name)
+	//}
 
-	var tunFd int
-	if options.UnixSockFd > 0 {
-		tunFd = options.UnixSockFd
-	} else {
-		tunFd, err = unix.Socket(unix.AF_SYSTEM, unix.SOCK_DGRAM, 2)
-		if err != nil {
-			return nil, err
-		}
-	}
+	//var tunFd int
+	//if options.UnixSockFd > 0 {
+	//    tunFd = options.UnixSockFd
+	//} else {
+	//    tunFd, err = unix.Socket(unix.AF_SYSTEM, unix.SOCK_DGRAM, 2)
+	//    if err != nil {
+	//        return nil, err
+	//    }
+	//}
 
-	err = configure(tunFd, ifIndex, options.Name, options)
-	if err != nil {
-		unix.Close(tunFd)
-		return nil, err
-	}
+	//err = configure(tunFd, ifIndex, options.Name, options)
+	//if err != nil {
+	//    unix.Close(tunFd)
+	//    return nil, err
+	//}
 	nativeTun := &NativeTun{
-		tunFile: os.NewFile(uintptr(tunFd), "utun"),
+		tunFile: os.NewFile(uintptr(options.UnixSockFd), "utun"),
 		mtu:     options.MTU,
 	}
 	if len(options.Inet4Address) > 0 {
