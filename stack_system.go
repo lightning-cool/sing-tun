@@ -7,6 +7,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/metacubex/mihomo/log"
 	"github.com/metacubex/sing-tun/internal/clashtcpip"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
@@ -144,6 +145,7 @@ func (s *System) start() error {
 		s.tcpListener = tcpListener
 		s.tcpPort = M.SocksaddrFromNet(tcpListener.Addr()).Port
 		go s.acceptLoop(tcpListener)
+		log.Infoln("=====> stack tcp listener: %s, tcpPort: %d", tcpListener.Addr().String(), s.tcpPort)
 	}
 	if s.inet6Address.IsValid() {
 		address := net.JoinHostPort(s.inet6ServerAddress.String(), "0")
@@ -298,6 +300,7 @@ func (s *System) acceptLoop(listener net.Listener) {
 			continue
 		}
 		destination := M.SocksaddrFromNetIP(session.Destination)
+		log.Debugln("acceptLoop recv => connPort: %d ===> %s -> %s:%d", connPort, session.Source, destination.Addr, destination.Port)
 		if destination.Addr.Is4() {
 			for _, prefix := range s.inet4Prefixes {
 				if prefix.Contains(destination.Addr) {
@@ -313,6 +316,7 @@ func (s *System) acceptLoop(listener net.Listener) {
 				}
 			}
 		}
+		log.Debugln("acceptLoop conn => %s -> %s:%d", session.Source, destination.Addr, destination.Port)
 		go func() {
 			_ = s.handler.NewConnection(s.ctx, conn, M.Metadata{
 				Source:      M.SocksaddrFromNetIP(session.Source),
@@ -365,6 +369,7 @@ func (s *System) processIPv4TCP(packet clashtcpip.IPv4Packet, header clashtcpip.
 	source := netip.AddrPortFrom(packet.SourceIP(), header.SourcePort())
 	destination := netip.AddrPortFrom(packet.DestinationIP(), header.DestinationPort())
 	if !destination.Addr().IsGlobalUnicast() {
+		log.Debugln("[TCP] => x => %s:%d -> %s:%d", source.Addr().String(), source.Port(), destination.Addr().String(), destination.Port())
 		return nil
 	} else if source.Addr() == s.inet4ServerAddress && source.Port() == s.tcpPort {
 		session := s.tcpNat.LookupBack(destination.Port())
@@ -375,12 +380,18 @@ func (s *System) processIPv4TCP(packet clashtcpip.IPv4Packet, header clashtcpip.
 		header.SetSourcePort(session.Destination.Port())
 		packet.SetDestinationIP(session.Source.Addr())
 		header.SetDestinationPort(session.Source.Port())
+		log.Debugln("[TCP] => i => %s:%d -> %s:%d ===> %s:%d -> %s:%d",
+			source.Addr().String(), source.Port(), destination.Addr().String(), destination.Port(),
+			session.Destination.Addr().String(), session.Destination.Port(), session.Source.Addr().String(), session.Source.Port())
 	} else {
 		natPort := s.tcpNat.Lookup(source, destination)
 		packet.SetSourceIP(s.inet4Address)
 		header.SetSourcePort(natPort)
 		packet.SetDestinationIP(s.inet4ServerAddress)
 		header.SetDestinationPort(s.tcpPort)
+		log.Debugln("[TCP] => o => %s:%d -> %s:%d ===> %s:%d -> %s:%d",
+			source.Addr().String(), source.Port(), destination.Addr().String(), destination.Port(),
+			s.inet4Address.String(), natPort, s.inet4ServerAddress.String(), s.tcpPort)
 	}
 	if !s.txChecksumOffload {
 		header.ResetChecksum(packet.PseudoSum())
